@@ -1,36 +1,58 @@
-# Microsoft Copilotアプリ＋OneDriveで使う前提と手順
+# Microsoft Copilotアプリで本番リポジトリを調べる方法
 
-確認日：2026-11-04。Microsoft Copilotアプリの種類、アカウント、ライセンス、管理者設定によって、参照・添付できる形式と範囲は異なる。**OneDriveにZIPがあるだけで、その中のリポジトリ全体をCopilotが解凍・横断探索できるとはみなさない。** Microsoftの[一般向けアップロード対応形式](https://support.microsoft.com/en-gb/microsoft-365-copilot/file-upload-in-microsoft-copilot)と[職場・学校向け対応形式](https://support.microsoft.com/en-au/microsoft-365-copilot/file-formats-supported-by-microsoft-365-copilot)の確認済み一覧に `.zip` は含まれていない。これは「どのCopilot環境でも絶対に展開できない」という断定ではなく、**プロンプトだけで展開可能だと保証できない**という意味である。
+確認日：2026-11-04。ここでいうCopilotは**Microsoft Copilotアプリ**であり、GitHub Copilotではない。本番リポジトリはこの資料のリポジトリとは別物で、こちらから実物を検証できていない。アカウント、ライセンス、管理者設定、アプリ内で使う機能によって可否が変わる。
 
-## 最初に行うこと
+## 結論：ZIPリンクから調べる運用はやめる
 
-1. 本番リポジトリのコピーを扱うことが社内ポリシー上許可されているか確認する。ZIPを含め、`.env`、秘密鍵、認証情報、実データ、ログ等を不用意に添付しない。OneDrive上の共有範囲とCopilotのアカウントを確認する。
-2. Copilotアプリで対象を添付・参照し、[00. アクセス確認](00-access-check.md)を実行する。名前が見えたことではなく、`SKILL.md`・script・設定/テストの**実際の本文**を一部読めたかで判断する。
-3. ZIP内部を読めない場合は、利用者側で許可された方法でローカルに展開し、必要なファイルだけをOneDriveへ置く。展開後の相対パスを保つ。CopilotへZIPの内容を想像させない。
-4. 個別ファイルを読める状態で、[索引](README.md)から質問を一問ずつ選ぶ。各回答冒頭の「今回読めたファイル」と「未確認範囲」を確認してから、その結論を使う。
+Microsoftの[Copilotへのファイルアップロード資料](https://support.microsoft.com/en-gb/microsoft-365-copilot/file-upload-in-microsoft-copilot)および[対応形式一覧](https://support.microsoft.com/en-au/microsoft-365-copilot/file-formats-supported-by-microsoft-365-copilot)にZIPはない。実際にZIPを展開できなかった今回の観測とも整合する。「ZIPのOneDriveリンクを渡せば中身を解析できる」とは扱わない。
 
-職場・学校向けMicrosoft Copilotには `.py`、`.js`、`.json`、`.yaml`、`.md` などの[対応形式一覧](https://support.microsoft.com/en-au/microsoft-365-copilot/file-formats-supported-by-microsoft-365-copilot)がある一方、一般向けの[ファイルアップロード資料](https://support.microsoft.com/en-gb/microsoft-365-copilot/file-upload-in-microsoft-copilot)にある形式は異なる。対象のアプリとアカウントで実際に読めるか確認する。対応しないソース形式しかない場合、社内ポリシーが許すなら、**元の相対パスを本文先頭に記した** `.txt` または `.md` の閲覧用コピーを用意する選択肢がある。コピーを原本や本番実装と混同しない。
+展開済みリポジトリをOneDriveへアップロードすること自体は可能でも、**保存できることとCopilotが全ソースを読めることは別**。[OneDriveの同期上の推奨事項](https://support.microsoft.com/en-gb/onedrive/restrictions-and-limitations-in-onedrive-and-sharepoint?ad=gb&rs=en-gb&ui=en-us)は大量ファイルの処理に時間がかかると説明する。一方、[OneDrive内のCopilot](https://support.microsoft.com/en-us/onedrive/frequently-asked-questions-about-copilot-in-onedrive)は複数ファイルの質問が最大5件で、フォルダーQ&Aは非対応。[Copilot Chatのファイル参照](https://support.microsoft.com/en-us/microsoft-365-copilot/refer-to-specific-files-and-more-in-microsoft-365-copilot?preview=true)にはフォルダー添付機能の記載があるが、これは別の画面・機能であり、「数百・数千ファイルを網羅して読んだ」ことを保証しない。フォルダーを選べても、網羅性は必ず実測する。
 
-## ファイルを渡す単位
+## 推奨する分岐
 
-リポジトリ全体を一度の回答に押し込むより、質問ごとに関連ファイルをまとめる。例：
+| 利用環境 | 使い方 | 全体の網羅性 |
+|---|---|---|
+| Microsoft Copilotアプリの通常チャットのみ | 調査テーマごとに選別したファイル、または根拠付きの小さなソースパックを添付する | 添付した範囲に限定。既定の推奨手順 |
+| アプリに「Code」タブがあり、ローカルプロジェクトが許可されている | 本番ではない作業用コピーのローカルフォルダーを開き、[00](00-access-check.md)で探索能力を検証する | フォルダー内を探索できる可能性が高いが、実際に読んだファイルを確認する |
+| OneDrive内のCopilotを使う | 最大5件の関連ファイルを選択して質問する | 選択ファイル内だけ。リポジトリ全体の調査には単独では不向き |
 
-| 質問 | まず参照させるファイル群 |
-|---|---|
-| 01〜05 全体像 | 主要な `SKILL.md`、入口スクリプト、設定、README、ディレクトリ一覧 |
-| 06 個別フロー | 対象の `SKILL.md`、その参照資料、呼ぶscript、検証コード、テスト |
-| 07 統合フロー | まとめ用 `SKILL.md`、個別起動箇所、集計script、入出力形式、テスト |
-| 08〜10 品質・データ | Excel/JSON変換、判定規則、検証、fixture、期待値 |
-| 11〜13 運用 | 設定、依存定義、CI、起動手順、ログ・再開処理 |
-| 16〜21 深掘り | 問題の入口、関連する呼出し元・先、設定、テスト、変更履歴 |
+通常チャットへの[ファイルアップロード](https://support.microsoft.com/en-gb/microsoft-365-copilot/file-upload-in-microsoft-copilot)は1会話20件、1件50 MBまでと案内されている。共通の対応形式はPDF、DOCX、XLSX、PPTX、TXT、JSON、CSV、MD等。[職場・学校アカウントでCopilotライセンスがある場合](https://support.microsoft.com/en-au/microsoft-365-copilot/file-formats-supported-by-microsoft-365-copilot)は `.py`、`.js`、`.sh`、`.yaml` なども対象に含まれる。対象環境で実際に添付・本文参照ができるかを試すこと。個人アカウントや別画面に職場向け対応をそのまま当てはめない。
 
-上表は**渡す候補**であって、実リポジトリにそのファイルがあると仮定しない。関連ファイルが他にあるとCopilotが示したら追加で参照させる。Microsoftの[Copilot Chat資料](https://support.microsoft.com/en-gb/microsoft-365-copilot/add-content-to-microsoft-365-copilot-chat-prompts)はOneDriveのファイルを添付する手段を説明している。別の[参照資料](https://support.microsoft.com/en-us/microsoft-365-copilot/refer-to-specific-files-and-more-in-microsoft-365-copilot?preview=true)にはフォルダー参照の説明もあるが、Copilot in OneDriveの[FAQ](https://support.microsoft.com/en-us/onedrive/frequently-asked-questions-about-copilot-in-onedrive)にはフォルダーQ&A非対応の記述がある。製品面が異なるため、**フォルダーを選べても全ファイル本文を横断できたとは扱わない**。ファイル数・サイズの上限も利用面ごとに確認する。
+Microsoftの[Copilot Code（Frontier）](https://learn.microsoft.com/en-us/copilot/code/get-started)はプレビューで、Codeタブの有効化と条件を満たす環境が必要。利用可能なら[ローカルの既存フォルダー](https://learn.microsoft.com/en-us/copilot/code/use-code)を開ける。ただし、**開いたプロジェクト内のファイルを承認なしに読み書きできる**。調査の指示文だけで変更を防ぐことはできない。社内規程が許す、秘密情報を除いた隔離コピーを使い、必要ならOS側で書き込みを制限する。Codeタブがなければこの方法は飛ばす。
 
-## 回答の品質ゲート
+## 通常チャットでの具体的な進め方
 
-- 各回答に「読めた相対パス」「未確認のパス・種類」「結論ごとの根拠」を求める。
-- 行番号がCopilotの画面から分からない場合、相対パス＋関数名・見出し＋短い非機密の根拠でよい。**行番号を捏造させない。**
-- 「ない」「全て」「必ず」といった断定は、探索範囲が十分か[追加質問ガイド](follow-up-guide.md)で確かめる。
-- 複数回に分けてファイルを渡した場合、前回の回答だけを根拠に横断結論を出さず、必要な原本を再添付・再参照する。
+1. 社内ポリシー上、Copilotへの入力が許された**調査用コピー**を用意する。`.env`、鍵、認証情報、顧客データ、実データExcel、ログ、生成物、`.git`、依存ライブラリは対象から外す。除外後にも機密が残らないか人が確認する。
+2. 構成を知らなくても、まずローカルで相対パス・拡張子・サイズ・件数の**機械的な目録**を作れる。次にファイル名や静的な参照から入口候補を抽出する。目録は探索範囲と欠落を可視化するためのもので、本文の根拠とはみなさない。具体的な開始方法は[未知のリポジトリを探索する手順](00a-repository-discovery.md)を参照。
+3. 1テーマにつき、入口の `SKILL.md`、呼ぶscript、集計script、設定、対応するテストなど、**原本の関連ファイルだけ**を少数選ぶ。パス構造が添付で失われるなら、閲覧用 `.md`/`.txt` に原本の相対パスと必要な行範囲を明記する。原本を加工した場合は「閲覧用コピー」であると明記する。
+4. [00. アクセス確認](00-access-check.md)で本文が読めるか検証し、[索引](README.md)の個別プロンプトを一問ずつ使う。回答には「読めたファイル」「未確認ファイル」「根拠」を要求する。回答で新たな呼出し先が見つかったら、そのファイルを次の回で追加する。
+5. 統合フローなど複数テーマにまたがる結論は、前回のAI要約だけでつながず、必要な原本を再添付して照合する。全体の網羅的な結論は、目録上の対象ファイルと実際に読めたファイルの差分を確認してから出す。
 
-Microsoftも[Copilot出力の検証](https://support.microsoft.com/en-gb/microsoft-365-copilot/validate-copilot-output)で、重要な主張を元資料へ遡って確認することを勧めている。今回の質問集はそのための調査補助であり、本番システムの正しさをCopilotだけで保証するものではない。
+### ローカルで取得するOneDrive URLについて
+
+OneDrive同期フォルダーをローカルで列挙すれば、ローカル相対パスの目録は作れる。ただし、ローカルパスから共有URLを文字列連結で作ることは避ける。正式なURLが必要なら、組織が許可した認証・権限の下で[Microsoft Graphのフォルダー列挙API](https://learn.microsoft.com/en-us/graph/api/driveitem-list-children?view=graph-rest-1.0)を使い、各項目の[`webUrl`](https://learn.microsoft.com/en-us/graph/api/resources/driveitem?view=graph-rest-1.0)を取得する。子フォルダーを再帰的にたどり、`@odata.nextLink`のページ送りも処理する。URLは「その項目をブラウザーで開く場所」であり、アクセス権の付与でもCopilotによる本文読解の証明でもない。URL一覧だけを渡して全コードの分析を期待しない。
+
+ソースパックの例（内容は架空。実ファイルを見てから選ぶ）：
+
+```text
+調査テーマ: まとめ用スキルから個別チェックへの呼出し
+対象版: 調査用コピーの作成日・コミットID（分かる場合）
+目録: skills/aggregate/SKILL.md, skills/check-a/SKILL.md,
+      scripts/run_aggregate.py, scripts/check_a.py, tests/test_aggregate.py
+今回添付: skills/aggregate/SKILL.md, scripts/run_aggregate.py,
+          skills/check-a/SKILL.md
+未添付: scripts/check_a.py, tests/test_aggregate.py
+問い: まとめ→個別チェックの呼出し経路を、今回読めた本文だけで追跡。
+      未添付ファイルに依存する結論は保留して、次に必要なファイルを挙げる。
+```
+
+**注意**：複数のコードを1つの文書に結合する場合、各節に `原本相対パス` と `元の行番号` を付け、行の省略・加工を明示する。単なるAI要約やファイル名一覧をソースの代用にしない。大量のコードを1巨大文書へまとめると参照漏れ・文脈欠落の検証が難しくなるため、テーマ別に分割する。
+
+## 失敗を見分ける基準
+
+- ファイル名だけ挙げ、本文中の関数名・設定キー・短い根拠を示せない → 本文アクセス未確認。
+- 目録にはあるのに、関連する呼出し先・テストを読めない → その範囲の結論を保留。
+- 行番号が画面から得られない → 行番号を捏造せず、相対パス＋関数名・見出しで示す。
+- 「全て」「存在しない」などの断定 → 探索対象数と読めた件数を照合し、未確認範囲を示す。
+
+[Microsoftの出力検証ガイド](https://support.microsoft.com/en-gb/microsoft-365-copilot/validate-copilot-output)も重要な主張を元資料へ戻って確認することを勧めている。Copilotの回答は本番実装の保証ではなく、根拠確認付きのキャッチアップ資料として扱う。
