@@ -6,6 +6,7 @@
 - [具体的な修正例](concrete-optimization-examples.md)
 - [統合実行時だけ品質が下がる場合の原因と切り分け](integrated-run-quality-diagnosis.md)
 - [本番の統合実行が停止したように見える場合の判断と安全な再開](long-running-recovery-guide.md)
+- [本番リポジトリの初期キャッチアップ用プロンプト集](production-repository-onboarding-prompts.md)
 - [サンプルコードと架空 Excel](examples/)
 
 実際の業務スキルや業務データは含みません。最初は `examples/` で `python3 make_fixture.py` を実行し、ガイドの「動くサンプル」に沿って確認できます。Codex による判定とトークン計測には、認証済みの Codex CLI が必要です。
