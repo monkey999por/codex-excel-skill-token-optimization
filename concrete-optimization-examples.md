@@ -139,7 +139,70 @@ scripts/: Excel の読取、機械チェック、結合、集計
 - 多数のツールを自前の Responses API に登録しているなら、[Tool search](https://developers.openai.com/api/docs/guides/tools-tool-search)で定義を必要時に読み込む選択肢がある。**Codex CLI の組み込みツールを `SKILL.md` から `defer_loading` にする機能ではない。**
 - ツールが全件を返す設計なら、`count`、`issue_samples`、`artifact_path` のような構造化された結果に変える。ただし必要な根拠を切り捨てず、詳細は参照可能なファイルとして残す。[Programmatic Tool Calling の資料](https://developers.openai.com/api/docs/guides/tools-programmatic-tool-calling)は、複数結果をコードで絞り込む場合に中間出力を減らせると説明している。
 
-## 6. 変更前後の判定表
+## 6. 推論量を仕事の難しさに合わせる
+
+意味上の矛盾を見つける行判定と、複数仕様書を俯瞰して優先順位を考える作業では、必要な推論量が違う。OpenAI の[現行デプロイ指針](https://developers.openai.com/api/docs/guides/deployment-checklist)は、抽出・分類などの定型作業では低い推論量を試し、難しい診断には品質に応じて上げるよう勧める。Codex の[設定資料](https://learn.chatgpt.com/docs/config-file/config-reference)には `model_reasoning_effort` がある。対応する値はモデルとクライアントで異なる。
+
+```bash
+# 同じモデル・入力・スキルで基準値を取った後、別の実行で比較する例
+cd examples
+mkdir -p out
+codex exec --json --skip-git-repo-check -C . -s workspace-write \
+  -c 'model_reasoning_effort="low"' \
+  'Use the demo-check skill to check fixture/function.xlsx.' > out/check-low-trace.jsonl
+python3 measure.py out/check-low-trace.jsonl
+```
+
+事前に[計測ガイド](token-optimization-guide.md)の手順で架空データを作り、同条件の別作業コピーで比較する。`low` を全工程の既定値にせず、行単位の正解率、難しい矛盾、統合俯瞰の根拠を確認する。推論トークンだけ減っても、誤判定による再試行が増えれば総量は改善しない。
+
+## 7. AI を呼ぶ必要のないケースを先に終了する
+
+これはモデル固有の裏技ではなく、現在も有効な処理設計である。OpenAI の[遅延最適化資料](https://developers.openai.com/api/docs/guides/latency-optimization)は、結果が確定する処理をコードで扱うことを勧める。
+
+```text
+prepare 後の AI 候補が 0 件
+  → 空の results をスクリプトで作り、AI 行判定を省略
+
+全チェック結果の issue が 0 件で、定型の俯瞰文で要件を満たす
+  → 件数と「指摘なし」をスクリプトで出力し、AI 俯瞰を省略
+
+issue が 1 件以上、または複数種類にまたがる傾向の解釈が必要
+  → AI に件数と根拠例を渡して俯瞰
+```
+
+これは実スキルの要件に合わせた変更例。現行サンプルの `pipeline.py` に自動スキップ機能はないため、実装するなら `prepare` が返す候補数と `aggregate-prepare` の指摘数で分岐し、後続のファイル形式は通常経路と同じにする。判定すべき行を機械判定で誤って除外しないことが先決である。
+
+## 8. 再実行時は、変わらない行の再判定を避ける
+
+仕様書が一部だけ更新される運用なら、毎回全行を AI に戻すより、変わった行だけを再判定する余地がある。これは[伝統的なキャッシュやハッシュ計算も有効](https://developers.openai.com/api/docs/guides/latency-optimization)という一般的な最適化を、このワークフローへ適用した設計案である。
+
+```text
+判定キャッシュのキー = hash(
+  種類、判定に使う正規化済み列、参照する関連行、
+  ルール版、プロンプト版、モデル設定
+)
+
+キーが一致 → 過去の判定と根拠を再利用
+キーが変化 → その行を再判定
+集計       → 毎回、全行の最新結果からスクリプトで再計算
+```
+
+行を単独で判断できないチェックでは、関連行や仕様書全体の版もキーに含める。`row_key` だけをキーにすると、同じ行番号の内容変更を見逃す。ルールやプロンプト変更後は旧判定を再利用しない。まず更新率と再判定件数を測り、運用上の複雑さに見合う場合だけ採用する。
+
+## 9. 出力検証と再試行を行単位にする
+
+短い出力契約は、欠落や ID の取り違えを検出できて初めて有効になる。現行サンプルの[`pipeline.py`](examples/pipeline.py)は、候補 `row_key` の過不足・重複と `verdict` の値を検証してから Excel に結合する。この検証が落ちたとき、全 Excel を最初から AI に読ませず、失敗した候補 ID と必要な元データだけを再提示する設計にする。
+
+```text
+候補: function.xlsx:2, :4, :5
+AI出力: function.xlsx:2, :4
+検証: function.xlsx:5 が欠落
+再試行入力: function.xlsx:5 の必要列と短い出力契約だけ
+```
+
+ただし、判定間に依存関係がある場合や出力全体の整合性が崩れた場合は、該当する依存範囲を再評価する。API でモデルの最終応答を直接受け取る構成なら[Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)も選択肢になる。Codex CLI の `--output-schema` は最終応答用であり、スキルが途中で書く `review.json` を自動検証するものとして扱わない。
+
+## 10. 採用前に比較する項目
 
 | 変更 | まず見る指標 | 採用条件 |
 |---|---|---|
@@ -148,9 +211,15 @@ scripts/: Excel の読取、機械チェック、結合、集計
 | `packet.json` / `ai.json` の分離 | モデルが読んだデータ、行対応 | 全行を漏れなく処理し、不要な行の再読込が減る |
 | 機械チェック・集計の Python 化 | AI 候補数、集計一致 | 指摘の取りこぼしと件数差がない |
 | ツールの短い結果 | ツール出力、失敗時の診断可能性 | 正常時の出力が減り、失敗原因は追える |
+| 推論量の調整 | 総トークン、推論出力、難例の品質 | 難例を維持し、完了までの総量が下がる |
+| AI 呼び出しの省略 | 候補0件などの対象数、出力形式 | 本来必要な判定を飛ばさず、成果物が同じ形式で出る |
+| 変更行だけの再判定 | 更新率、キャッシュ不整合、再判定件数 | 古い判定を誤用せず、実運用の総量が下がる |
+| 欠落行だけの再試行 | 失敗率、再試行行数、最終品質 | 修復後に全行・全件の整合性が取れる |
 
 実測は[既存の `measure.py`](examples/measure.py)で `codex exec --json` の入力・出力・キャッシュ済み入力を確認する。正解データで行単位の品質と集計値も照合する。キャッシュ済み入力は総入力の内数であり、キャッシュ率上昇だけを「総トークン削減」と呼ばない。[OpenAI のキャッシュ資料](https://developers.openai.com/api/docs/guides/prompt-caching)
 
 ### この文書の適用範囲
 
 ここで示した「変更前」は典型的な無駄の例で、ユーザーの非公開スキルに実際に存在すると断定していない。Codex CLI で有効な改善と、自作 API / MCP に限定される機能を分けた。削減量は入力データ、モデル、実行方法、キャッシュ状態に依存するため、公開資料の数値をこのスキルの予測値として転用しない。
+
+この文書では、2026-11-04 時点の公式資料で確認できる機能と、そこから導いたアプリケーション設計案を区別した。長い思考過程を書かせる指示は採用していない。OpenAI の[推論モデルの指針](https://developers.openai.com/api/docs/guides/reasoning-best-practices)は、`think step by step` のような誘導が性能を高めるとは限らないと説明している。
