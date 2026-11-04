@@ -1,0 +1,7 @@
+{
+  "results": [
+    {"row_key": "screen.xlsx:2", "verdict": "ok", "code": "OK", "evidence": ""},
+    {"row_key": "screen.xlsx:4", "verdict": "issue", "code": "CONTRADICTION", "evidence": "必須入力なのに未入力を保存"},
+    {"row_key": "screen.xlsx:5", "verdict": "ok", "code": "OK", "evidence": ""}
+  ]
+}

@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"fictional-demo"}
+{"type":"turn.started"}
+{"type":"turn.completed","usage":{"input_tokens":1200,"cached_input_tokens":400,"output_tokens":200,"reasoning_output_tokens":50}}

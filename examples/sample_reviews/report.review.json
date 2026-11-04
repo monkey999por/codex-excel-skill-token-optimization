@@ -1,0 +1,7 @@
+{
+  "results": [
+    {"row_key": "report.xlsx:2", "verdict": "ok", "code": "OK", "evidence": ""},
+    {"row_key": "report.xlsx:4", "verdict": "issue", "code": "CONTRADICTION", "evidence": "明細の総和と常に0が矛盾"},
+    {"row_key": "report.xlsx:5", "verdict": "ok", "code": "OK", "evidence": ""}
+  ]
+}

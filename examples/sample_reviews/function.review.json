@@ -1,0 +1,7 @@
+{
+  "results": [
+    {"row_key": "function.xlsx:2", "verdict": "ok", "code": "OK", "evidence": ""},
+    {"row_key": "function.xlsx:4", "verdict": "issue", "code": "CONTRADICTION", "evidence": "税込表示と税抜表示が矛盾"},
+    {"row_key": "function.xlsx:5", "verdict": "ok", "code": "OK", "evidence": ""}
+  ]
+}
