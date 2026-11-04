@@ -4,6 +4,7 @@ Excel 仕様書をチェックする Codex スキルのトークン消費を測�
 
 - [改善・計測ガイド](token-optimization-guide.md)
 - [具体的な修正例](concrete-optimization-examples.md)
+- [統合実行時だけ品質が下がる場合の原因と切り分け](integrated-run-quality-diagnosis.md)
 - [サンプルコードと架空 Excel](examples/)
 
 実際の業務スキルや業務データは含みません。最初は `examples/` で `python3 make_fixture.py` を実行し、ガイドの「動くサンプル」に沿って確認できます。Codex による判定とトークン計測には、認証済みの Codex CLI が必要です。
